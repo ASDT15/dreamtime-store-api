@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/product');
+const { broadcast } = require('../server'); // استيراد دالة WebSocket broadcast
 
 // GET /api/products - جلب جميع المنتجات
 router.get('/', async (req, res) => {
@@ -21,16 +22,11 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'معرف غير صالح' });
-    }
+    if (isNaN(id)) return res.status(400).json({ error: 'معرف غير صالح' });
 
     const product = await Product.getById(id);
-    if (product) {
-      res.json(product);
-    } else {
-      res.status(404).json({ error: 'المنتج غير موجود' });
-    }
+    if (product) res.json(product);
+    else res.status(404).json({ error: 'المنتج غير موجود' });
   } catch (error) {
     console.error('خطأ في جلب المنتج:', error.message);
     res.status(500).json({ 
@@ -44,6 +40,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const productId = await Product.create(req.body);
+    const newProduct = await Product.getById(productId);
+
+    // إشعار WebSocket لجميع العملاء
+    broadcast({ type: 'add', product: newProduct });
+
     res.status(201).json({ 
       id: productId, 
       message: 'تم إنشاء المنتج بنجاح' 
@@ -61,12 +62,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'معرف غير صالح' });
-    }
+    if (isNaN(id)) return res.status(400).json({ error: 'معرف غير صالح' });
 
     const success = await Product.update(id, req.body);
     if (success) {
+      const updatedProduct = await Product.getById(id);
+
+      // إشعار WebSocket لجميع العملاء
+      broadcast({ type: 'update', product: updatedProduct });
+
       res.json({ message: 'تم التحديث بنجاح' });
     } else {
       res.status(404).json({ error: 'المنتج غير موجود' });
@@ -84,12 +88,13 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'معرف غير صالح' });
-    }
+    if (isNaN(id)) return res.status(400).json({ error: 'معرف غير صالح' });
 
     const success = await Product.delete(id);
     if (success) {
+      // إشعار WebSocket لجميع العملاء
+      broadcast({ type: 'delete', id });
+
       res.json({ message: 'تم الحذف بنجاح' });
     } else {
       res.status(404).json({ error: 'المنتج غير موجود' });
