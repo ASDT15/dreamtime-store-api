@@ -7,6 +7,14 @@ const WebSocket = require('ws');
 
 const app = express();
 const port = process.env.PORT || 10000;
+const { wss } = require('./ws');
+
+// إضافة دعم WebSocket للـ HTTP server
+server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, ws => {
+        wss.emit('connection', ws, request);
+    });
+});
 
 // Middleware
 app.use(cors());
@@ -64,13 +72,6 @@ const startServer = async () => {
         process.exit(1);
     }
 };
-const { wss } = require('./ws');
-
-server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, ws => {
-        wss.emit('connection', ws, request);
-    });
-});
 
 startServer();
 

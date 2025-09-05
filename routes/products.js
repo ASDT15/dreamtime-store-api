@@ -2,7 +2,6 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/product');
-const { broadcast } = require('../server'); // استيراد دالة WebSocket broadcast
 const { broadcast } = require('../ws'); // الآن بدون circular dependency
 
 // GET /api/products - جلب جميع المنتجات

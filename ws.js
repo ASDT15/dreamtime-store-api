@@ -1,5 +1,6 @@
 // ws.js
 const WebSocket = require('ws');
+
 const wss = new WebSocket.Server({ noServer: true });
 
 const broadcast = (data) => {
