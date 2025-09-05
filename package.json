@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/ASDT15/dreamtime-store-api/issues"
   },
-  "homepage": "https://github.com/ASDT15/dreamtime-store-api#readme"
+  "homepage": "https://github.com/ASDT15/dreamtime-store-api#readme",
+  "dependencies": {
+    "dotenv": "^17.2.2"
+  }
 }
