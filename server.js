@@ -3,18 +3,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./db'); // كائن db مع initializeTables
-const WebSocket = require('ws');
+const { wss } = require('./ws'); // استيراد wss من ws.js
 
 const app = express();
 const port = process.env.PORT || 10000;
-const { wss } = require('./ws');
-
-// إضافة دعم WebSocket للـ HTTP server
-server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, ws => {
-        wss.emit('connection', ws, request);
-    });
-});
 
 // Middleware
 app.use(cors());
@@ -28,22 +20,6 @@ app.use('/api/orders', require('./routes/orders'));
 app.get('/', (req, res) => {
     res.send('Dream Time Store Backend API is running...');
 });
-
-// إعداد WebSocket
-const wss = new WebSocket.Server({ noServer: true });
-
-// دالة لإرسال التحديثات لجميع العملاء
-const broadcast = (data) => {
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
-        }
-    });
-};
-
-// تعديل مسارات المنتجات لتدعم WebSocket
-// مثال: يمكن تعديل route /api/products POST و DELETE لإرسال إشعارات WebSocket
-// لاحقًا يمكن عمل هذا مباشرة داخل ملفات routes/products.js عند إضافة أو حذف منتج
 
 // بدء تشغيل الخادم بعد التأكد من الجداول
 const startServer = async () => {
@@ -74,6 +50,3 @@ const startServer = async () => {
 };
 
 startServer();
-
-// تصدير broadcast لاستخدامه داخل routes/products.js
-module.exports = { broadcast };
