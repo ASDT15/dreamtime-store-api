@@ -64,6 +64,13 @@ const startServer = async () => {
         process.exit(1);
     }
 };
+const { wss } = require('./ws');
+
+server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, ws => {
+        wss.emit('connection', ws, request);
+    });
+});
 
 startServer();
 
