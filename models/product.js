@@ -2,13 +2,16 @@
 const db = require('../db');
 
 const Product = {
-  // جلب جميع المنتجات مع الصور والفيديوهات
+  // جلب جميع المنتجات مع الصور والفيديوهات والمقاسات
   getAll: async () => {
     try {
+      // تم تعديل الاستعلام لتشمل size_type و available_sizes
       const result = await db.query(`
         SELECT p.*,
                COALESCE(json_agg(pi.image_url) FILTER (WHERE pi.image_url IS NOT NULL), '[]') AS images,
-               COALESCE(json_agg(pv.video_url) FILTER (WHERE pv.video_url IS NOT NULL), '[]') AS videos
+               COALESCE(json_agg(pv.video_url) FILTER (WHERE pv.video_url IS NOT NULL), '[]') AS videos,
+               p.size_type AS size_type,
+               COALESCE(p.available_sizes, '[]') AS available_sizes
         FROM products p
         LEFT JOIN product_images pi ON p.id = pi.product_id
         LEFT JOIN product_videos pv ON p.id = pv.product_id
@@ -18,7 +21,10 @@ const Product = {
       return result.rows.map(product => ({
         ...product,
         images: Array.isArray(product.images) ? product.images : [],
-        videos: Array.isArray(product.videos) ? product.videos : []
+        videos: Array.isArray(product.videos) ? product.videos : [],
+        // تأكد من أن المقاسات تُرجع بشكل صحيح
+        size_type: product.size_type || 'default',
+        available_sizes: Array.isArray(product.available_sizes) ? product.available_sizes : []
       }));
     } catch (err) {
       console.error('خطأ في جلب المنتجات:', err.message);
@@ -26,15 +32,18 @@ const Product = {
     }
   },
 
-  // جلب منتج حسب الـ ID
+  // جلب منتج حسب الـ ID مع الصور والفيديوهات والمقاسات
   getById: async (id) => {
     if (isNaN(id)) throw new Error('معرف المنتج غير صالح');
 
     try {
+      // تم تعديل الاستعلام لتشمل size_type و available_sizes
       const result = await db.query(`
         SELECT p.*,
                COALESCE(json_agg(pi.image_url) FILTER (WHERE pi.image_url IS NOT NULL), '[]') AS images,
-               COALESCE(json_agg(pv.video_url) FILTER (WHERE pv.video_url IS NOT NULL), '[]') AS videos
+               COALESCE(json_agg(pv.video_url) FILTER (WHERE pv.video_url IS NOT NULL), '[]') AS videos,
+               p.size_type AS size_type,
+               COALESCE(p.available_sizes, '[]') AS available_sizes
         FROM products p
         LEFT JOIN product_images pi ON p.id = pi.product_id
         LEFT JOIN product_videos pv ON p.id = pv.product_id
@@ -48,7 +57,10 @@ const Product = {
       return {
         ...product,
         images: Array.isArray(product.images) ? product.images : [],
-        videos: Array.isArray(product.videos) ? product.videos : []
+        videos: Array.isArray(product.videos) ? product.videos : [],
+        // تأكد من أن المقاسات تُرجع بشكل صحيح
+        size_type: product.size_type || 'default',
+        available_sizes: Array.isArray(product.available_sizes) ? product.available_sizes : []
       };
     } catch (err) {
       console.error('خطأ في جلب المنتج بالـ ID:', err.message);
@@ -56,9 +68,10 @@ const Product = {
     }
   },
 
-  // إنشاء منتج جديد
+  // إنشاء منتج جديد مع دعم المقاسات
   create: async (productData) => {
-    const { name, price, description, main_image_url, type, images = [], videos = [] } = productData;
+    // تم تعديل القائمة لتشمل size_type و available_sizes
+    const { name, price, description, main_image_url, type, size_type = 'default', available_sizes = [], images = [], videos = [] } = productData;
 
     if (!name || !price || !type) {
       throw new Error('الاسم، السعر، والنوع مطلوبون');
@@ -69,15 +82,17 @@ const Product = {
     try {
       await client.query('BEGIN');
 
+      // تم تعديل الاستعلام ليدرج الحقول الجديدة
       const productResult = await client.query(
-        `INSERT INTO products (name, price, description, main_image_url, type)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [name, price, description, main_image_url, type]
+        `INSERT INTO products (name, price, description, main_image_url, type, size_type, available_sizes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        // تم تعديل قائمة القيم لتشمل size_type و available_sizes (مع JSON.stringify)
+        [name, price, description, main_image_url, type, size_type, JSON.stringify(available_sizes)]
       );
 
       const productId = productResult.rows[0].id;
 
-      // إدخال الصور
+      // إدخال الصور (بدون تغيير)
       if (Array.isArray(images) && images.length > 0) {
         const imageQueries = images
           .filter(url => url && typeof url === 'string')
@@ -88,7 +103,7 @@ const Product = {
         await Promise.all(imageQueries);
       }
 
-      // إدخال الفيديوهات
+      // إدخال الفيديوهات (بدون تغيير)
       if (Array.isArray(videos) && videos.length > 0) {
         const videoQueries = videos
           .filter(url => url && typeof url === 'string')
@@ -110,11 +125,12 @@ const Product = {
     }
   },
 
-  // تحديث منتج
+  // تحديث منتج مع دعم المقاسات
   update: async (id, productData) => {
     if (isNaN(id)) throw new Error('معرف المنتج غير صالح');
 
-    const { name, price, description, main_image_url, type, images, videos } = productData;
+    // تم تعديل القائمة لتشمل size_type و available_sizes
+    const { name, price, description, main_image_url, type, size_type = 'default', available_sizes = [], images, videos } = productData;
     const client = await db.getClient();
 
     try {
@@ -126,16 +142,20 @@ const Product = {
         return false;
       }
 
+      // تم تعديل الاستعلام لتحديث الحقول الجديدة
       await client.query(
         `UPDATE products 
-         SET name = $1, price = $2, description = $3, main_image_url = $4, type = $5 
-         WHERE id = $6`,
-        [name, price, description, main_image_url, type, id]
+         SET name = $1, price = $2, description = $3, main_image_url = $4, type = $5, size_type = $6, available_sizes = $7
+         WHERE id = $8`,
+        // تم تعديل قائمة القيم لتشمل size_type و available_sizes (مع JSON.stringify)
+        [name, price, description, main_image_url, type, size_type, JSON.stringify(available_sizes), id]
       );
 
+      // حذف الصور والفيديوهات القديمة (بدون تغيير)
       await client.query('DELETE FROM product_images WHERE product_id = $1', [id]);
       await client.query('DELETE FROM product_videos WHERE product_id = $1', [id]);
 
+      // إدخال الصور الجديدة (بدون تغيير)
       if (Array.isArray(images) && images.length > 0) {
         const imageQueries = images
           .filter(url => url && typeof url === 'string')
@@ -146,6 +166,7 @@ const Product = {
         await Promise.all(imageQueries);
       }
 
+      // إدخال الفيديوهات الجديدة (بدون تغيير)
       if (Array.isArray(videos) && videos.length > 0) {
         const videoQueries = videos
           .filter(url => url && typeof url === 'string')
@@ -167,7 +188,7 @@ const Product = {
     }
   },
 
-  // حذف منتج
+  // حذف منتج (بدون تغيير)
   delete: async (id) => {
     if (isNaN(id)) throw new Error('معرف المنتج غير صالح');
 

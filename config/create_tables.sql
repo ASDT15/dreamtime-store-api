@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS products (
     main_image_url TEXT, -- رابط الصورة الرئيسية
     type VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS size_type VARCHAR(50) DEFAULT 'default',
+ADD COLUMN IF NOT EXISTS available_sizes JSONB DEFAULT '[]';
 );
 
 -- جدول الصور الإضافية للمنتجات
@@ -53,5 +56,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INTEGER NOT NULL,
     size VARCHAR(50),
     location VARCHAR(255)
+    ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS size_type VARCHAR(50) DEFAULT 'default',
+ADD COLUMN IF NOT EXISTS available_sizes JSONB DEFAULT '[]';
 
 );
