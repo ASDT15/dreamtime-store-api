@@ -1,4 +1,3 @@
-
 -- جدول المنتجات
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
@@ -8,10 +7,13 @@ CREATE TABLE IF NOT EXISTS products (
     main_image_url TEXT, -- رابط الصورة الرئيسية
     type VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ALTER TABLE products 
+    -- لا تضع ALTER TABLE هنا
+);
+
+-- تعديل جدول المنتجات لإضافة أعمدة المقاسات (أمر منفصل)
+ALTER TABLE products 
 ADD COLUMN IF NOT EXISTS size_type VARCHAR(50) DEFAULT 'default',
 ADD COLUMN IF NOT EXISTS available_sizes JSONB DEFAULT '[]';
-);
 
 -- جدول الصور الإضافية للمنتجات
 CREATE TABLE IF NOT EXISTS product_images (
@@ -29,8 +31,9 @@ CREATE TABLE IF NOT EXISTS product_videos (
 );
 
 -- *** إضافة هذا السطر لحذف الجدول إذا كان موجودًا ***
-DROP TABLE IF EXISTS order_items; -- حذف الجدول المرتبط أولاً
-DROP TABLE IF EXISTS orders; -- ثم حذف الجدول الرئيسي
+-- (من الأفضل توخي الحذر مع DROP TABLE في بيئة الإنتاج)
+-- DROP TABLE IF EXISTS order_items; -- حذف الجدول المرتبط أولاً
+-- DROP TABLE IF EXISTS orders; -- ثم حذف الجدول الرئيسي
 
 -- جدول الطلبات الرئيسي
 CREATE TABLE IF NOT EXISTS orders (
@@ -56,8 +59,10 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INTEGER NOT NULL,
     size VARCHAR(50),
     location VARCHAR(255)
-    ALTER TABLE products 
-ADD COLUMN IF NOT EXISTS size_type VARCHAR(50) DEFAULT 'default',
-ADD COLUMN IF NOT EXISTS available_sizes JSONB DEFAULT '[]';
-
+    -- لا تضع ALTER TABLE هنا أيضًا
 );
+
+-- تعديل جدول order_items إذا لزم (أمر منفصل)
+-- (هذا الخط غير ضروري إلا إذا كنت بحاجة لإضافة أعمدة جديدة له هنا)
+-- ALTER TABLE order_items 
+-- ADD COLUMN IF NOT EXISTS ... ;
